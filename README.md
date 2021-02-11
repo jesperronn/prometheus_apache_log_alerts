@@ -22,7 +22,7 @@ curl -X POST http://localhost:9000/-/reload
 
 
 
-first example from https://dev.to/ablx/minimal-prometheus-setup-with-docker-compose-56mp
+
 
 
 Test it:
@@ -37,3 +37,8 @@ Test configuration:
 go get -v github.com/prometheus/prometheus/cmd/promtool # <- takes forever
 
 promtool check rules prometheus/alert.yml
+
+
+inspirational links:
+
+Inspired by https://github.com/magenta-aps/apache_log_exporter example of modified apache log to read stats. Then used first example from https://dev.to/ablx/minimal-prometheus-setup-with-docker-compose-56mp to setup prometheus for listening.

@@ -32,5 +32,4 @@ services:
 
 volumes:
   prometheus-data:
-  example-logs:
   logs:

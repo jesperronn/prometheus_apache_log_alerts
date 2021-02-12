@@ -4,6 +4,11 @@ groups:
       - alert: InstanceDown
         expr: up{job="services"} < 1
         for: 5m
-      - alert: SlowResponse
-        expr: sum(round(increase(http_latency_seconds_count[1h])))-sum(increase(http_latency_seconds_bucket{le="1"}[1h]))
-        for: 1m
+      - alert: SlowResponse2
+        expr: sum( floor(increase(http_latency_seconds_count[1h]))) -  sum( floor(increase(http_latency_seconds_bucket{le="1"} [1h])) ) >= 3
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: Mere end 3 langsomme requests seneste time
+          description: .....

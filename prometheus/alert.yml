@@ -1,6 +1,9 @@
 groups:
   - name: DemoAlerts
     rules:
-      - alert: InstanceDown 
-        expr: up{job="services"} < 1 
-        for: 5m 
+      - alert: InstanceDown
+        expr: up{job="services"} < 1
+        for: 5m
+      - alert: SlowResponse
+        expr: sum(round(increase(http_latency_seconds_count[1h])))-sum(increase(http_latency_seconds_bucket{le="1"}[1h]))
+        for: 1m

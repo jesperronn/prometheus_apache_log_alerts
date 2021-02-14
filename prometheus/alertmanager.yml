@@ -1,0 +1,9 @@
+route:
+  receiver: "fluentdreciever"
+  repeat_interval: 1m
+
+receivers:
+- name: "fluentdreciever"
+  webhook_configs:
+  - url: 'http://fluent:9880/alert'
+    send_resolved: true

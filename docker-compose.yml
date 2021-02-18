@@ -27,6 +27,17 @@ services:
     volumes:
       - ./config/fluentd.conf:/fluentd/etc/fluent.conf
       - logs:/opt/logs/:ro
+  logstash:
+    build:
+      context: .
+      dockerfile: logstash.Dockerfile
+      args:
+        buildno: 1
+    ports:
+      - 9600:9600
+      - 5044:5044
+    volumes:
+      - logs:/opt/logs/:ro
   grok_exporter:
     image: magentaaps/grok_exporter:latest-rc
     command: -config /opt/grok_exporter.conf
@@ -41,7 +52,13 @@ services:
     volumes:
       - ./config/httpd.conf:/usr/local/apache2/conf/httpd.conf
       - logs:/usr/local/apache2/logs
-
+  # for debugging purposes:
+  echo_server:
+    image: ealen/echo-server:0.5.0
+    environment:
+      PORT: 9145
+    ports:
+      - 9145:9145
 
 volumes:
   prometheus-data:

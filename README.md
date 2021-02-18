@@ -6,7 +6,7 @@ Description
 ## Useful Commands
 
 
-start Prometheus with:
+start entire stack with:
 
 ```
 docker-compose up -d
@@ -29,7 +29,7 @@ curl -X POST http://localhost:9000/-/reload
 ab -n 10000 -c 100 http://localhost:80/endpoint1
 ab -n 500 -c 100 http://localhost:80/endpoint2
 
-Manually append lines to apache log (fluentd/grok_exporter will pick them up)
+Manually append lines to apache log (grok_exporter will pick them up)
 
 You can manually create a slow 1222ms response and a fast 33ms response:
 ```
@@ -71,6 +71,50 @@ tail -n 1 /tmp/alerts/alerts.log/*.log
 ```
 
 NOTE: the alert is currently coded to trigger only if 3 slow responses are triggered within same hour
+
+## debug notes
+
+I provided some tools to ease the debug of what was going on.
+
+Echo server:
+
+in docker-compose you will find echo_server, which you can comment in and use to debug either logstash/fluentd.
+Basically, you configure Logstash/Fluentd to also send to the echo server. Thereby you can see what is being posted
+to the webhook.
+
+Usage with logstash:
+
+in `logstash_pipeline.conf`:
+
+```
+output {
+  http {
+    format => "json"
+    http_method => "post"
+    url => "http://echo_server:9145/webhook"
+  }
+}
+```
+
+Usage with fluentd:
+
+in `grok_exporter.conf`:
+
+```
+<match apache.access>
+  @type http
+
+  endpoint http://echo_server:9145/webhook
+  open_timeout 10
+
+  <format>
+    @type json
+  </format>
+  <buffer>
+    flush_interval 1s
+  </buffer>
+</match>
+```
 
 ## inspirational links:
 

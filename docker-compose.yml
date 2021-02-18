@@ -44,7 +44,9 @@ services:
     volumes:
       - logs:/opt/logs/:ro
   grok_exporter:
-    image: magentaaps/grok_exporter:latest-rc
+    build:
+      context: .
+      dockerfile: grok_exporter.Dockerfile
     command: -config /opt/grok_exporter.conf
     ports:
       - 9144:9144

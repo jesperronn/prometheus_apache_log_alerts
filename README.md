@@ -45,13 +45,26 @@ curl -X POST http://localhost:9000/-/reload
 ```
 
 
+Test of the prometheus configuration:
+
+```
+go get -v github.com/prometheus/prometheus/cmd/promtool # <- takes forever
+
+promtool check rules prometheus/alert.yml
+```
+
 
 
 
 ## Test it
 
-ab -n 10000 -c 100 http://localhost:80/endpoint1
-ab -n 500 -c 100 http://localhost:80/endpoint2
+### part 1: create some apache log entries
+
+* browser: http://localhost/endpoint4
+
+* `ab -n 10000 -c 100 http://localhost:80/endpoint1`
+* `ab -n 500 -c 100 http://localhost:80/endpoint2`
+
 
 Manually append lines to apache log (grok_exporter will pick them up)
 
@@ -68,13 +81,35 @@ NOTE: The above expression writes current timestamp with the unix date command:
 date "+%d/%b/%Y:%H:%M:%S %z" #=> 11/Feb/2021:15:39:55 +0000
 ```
 
-Test of the prometheus configuration:
+### Part 2: verify grok_exporter metrics endpoint
+
+Now you should be able to see some trafic to appear on http://localhost:9144/metrics
+
+For instance some histogram lines looking like this:
 
 ```
-go get -v github.com/prometheus/prometheus/cmd/promtool # <- takes forever
-
-promtool check rules prometheus/alert.yml
+# TYPE http_latency_seconds histogram
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="0.5"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="1"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="2"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="3"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="5"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="10"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="+Inf"} 1
+http_latency_seconds_sum{method="GET",path="/",status="200"} 0.009
+http_latency_seconds_count{method="GET",path="/",status="200"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="0.5"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="1"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="2"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="3"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="5"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="10"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="+Inf"} 1
+http_latency_seconds_sum{method="GET",path="/endpoint4",status="404"} 0
+http_latency_seconds_count{method="GET",path="/endpoint4",status="404"} 1
 ```
+You should see the endpoints like above. In the example, one hit on / and one hit on /endpoint4. The same count show up in all buckets, because none of them is slower than 0.5 seconds. Tweak that as you desire.
+
 
 ## How to verify that alerts are triggered:
 

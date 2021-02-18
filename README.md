@@ -1,6 +1,32 @@
 Description 
 ============
 
+Goal: Trigger Prometheus alerts based on slow response times (read from apache logs)
+
+
+Flow:
+
+* apache writing log files (added custom `duration` to each line)
+* Logstash/Fluentd (of your choice) reads apache logs, and sends to Grok-exporter webhook
+* Grok-exporter formats and exposes Prometheus-friendly metrics for http_latency on http://localhost:9144/metrics
+* Prometheus scrapes endpoint
+* Prometheus has alarm configured for alerting if 3 responses slower than 1 second occur within an hour
+* Prometheus triggers AlertManager with the alarm
+* Alarm calls custom webhook (fluentd_alerter)
+* Fluentd_alerter can write each alert it receives to a file
+
+### useful endpoints:
+
+Here is the list of endpoints which are exposed:
+
+Apache server: http://localhost/, http://localhost/endpoint1
+
+Grok-exporter metrics: http://localhost:9144/metrics
+
+Prometheus: http://localhost:9000/alerts, http://localhost:9000/targets
+
+AlertManager: http://localhost:9093/#/alerts
+
 
 
 ## Useful Commands
@@ -12,13 +38,11 @@ start entire stack with:
 docker-compose up -d
 ```
 
-Restart:
+Restart prometheus:
 
 ```
 curl -X POST http://localhost:9000/-/reload
 ```
-
-
 
 
 

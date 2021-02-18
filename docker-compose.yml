@@ -7,7 +7,7 @@ services:
       - 9093:9093
     depends_on:
       - prometheus
-      - fluent
+      - fluent_alerter
     volumes:
       - ./prometheus:/etc/alertmanager/
     command:
@@ -20,12 +20,17 @@ services:
       - ./prometheus:/etc/prometheus
       - prometheus-data:/prometheus
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
-  fluent:
+  fluent_collector:
+    image: fluent/fluentd:v1.10-1
+    volumes:
+      - ./config/fluentd_collector.conf:/fluentd/etc/fluent.conf
+      - logs:/opt/logs/:ro
+  fluent_alerter:
     image: fluent/fluentd:v1.10-1
     ports:
       - 9880:9880
     volumes:
-      - ./config/fluentd.conf:/fluentd/etc/fluent.conf
+      - ./config/fluentd_alerter.conf:/fluentd/etc/fluent.conf
       - logs:/opt/logs/:ro
   logstash:
     build:

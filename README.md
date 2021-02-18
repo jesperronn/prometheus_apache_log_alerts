@@ -1,6 +1,32 @@
 Description 
 ============
 
+Goal: Trigger Prometheus alerts based on slow response times (read from apache logs)
+
+
+Flow:
+
+* apache writing log files (added custom `duration` to each line)
+* Logstash/Fluentd (of your choice) reads apache logs, and sends to Grok-exporter webhook
+* Grok-exporter formats and exposes Prometheus-friendly metrics for http_latency on http://localhost:9144/metrics
+* Prometheus scrapes endpoint
+* Prometheus has alarm configured for alerting if 3 responses slower than 1 second occur within an hour
+* Prometheus triggers AlertManager with the alarm
+* Alarm calls custom webhook (fluentd_alerter)
+* Fluentd_alerter can write each alert it receives to a file
+
+### useful endpoints:
+
+Here is the list of endpoints which are exposed:
+
+Apache server: http://localhost/, http://localhost/endpoint1
+
+Grok-exporter metrics: http://localhost:9144/metrics
+
+Prometheus: http://localhost:9000/alerts, http://localhost:9000/targets
+
+AlertManager: http://localhost:9093/#/alerts
+
 
 
 ## Useful Commands
@@ -12,22 +38,33 @@ start entire stack with:
 docker-compose up -d
 ```
 
-Restart:
+Restart prometheus:
 
 ```
 curl -X POST http://localhost:9000/-/reload
 ```
 
 
+Test of the prometheus configuration:
 
+```
+go get -v github.com/prometheus/prometheus/cmd/promtool # <- takes forever
+
+promtool check rules prometheus/alert.yml
+```
 
 
 
 
 ## Test it
 
-ab -n 10000 -c 100 http://localhost:80/endpoint1
-ab -n 500 -c 100 http://localhost:80/endpoint2
+### part 1: create some apache log entries
+
+* browser: http://localhost/endpoint4
+
+* `ab -n 10000 -c 100 http://localhost:80/endpoint1`
+* `ab -n 500 -c 100 http://localhost:80/endpoint2`
+
 
 Manually append lines to apache log (grok_exporter will pick them up)
 
@@ -44,13 +81,35 @@ NOTE: The above expression writes current timestamp with the unix date command:
 date "+%d/%b/%Y:%H:%M:%S %z" #=> 11/Feb/2021:15:39:55 +0000
 ```
 
-Test of the prometheus configuration:
+### Part 2: verify grok_exporter metrics endpoint
+
+Now you should be able to see some trafic to appear on http://localhost:9144/metrics
+
+For instance some histogram lines looking like this:
 
 ```
-go get -v github.com/prometheus/prometheus/cmd/promtool # <- takes forever
-
-promtool check rules prometheus/alert.yml
+# TYPE http_latency_seconds histogram
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="0.5"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="1"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="2"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="3"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="5"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="10"} 1
+http_latency_seconds_bucket{method="GET",path="/",status="200",le="+Inf"} 1
+http_latency_seconds_sum{method="GET",path="/",status="200"} 0.009
+http_latency_seconds_count{method="GET",path="/",status="200"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="0.5"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="1"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="2"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="3"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="5"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="10"} 1
+http_latency_seconds_bucket{method="GET",path="/endpoint4",status="404",le="+Inf"} 1
+http_latency_seconds_sum{method="GET",path="/endpoint4",status="404"} 0
+http_latency_seconds_count{method="GET",path="/endpoint4",status="404"} 1
 ```
+You should see the endpoints like above. In the example, one hit on / and one hit on /endpoint4. The same count show up in all buckets, because none of them is slower than 0.5 seconds. Tweak that as you desire.
+
 
 ## How to verify that alerts are triggered:
 

@@ -1,4 +1,4 @@
-FROM  docker.elastic.co/logstash/logstash:5.6.16
+FROM  docker.elastic.co/logstash/logstash:7.11.1
 
 # for debug.level and logs path if needed
 COPY config/logstash.yml /usr/share/logstash/config/logstash.yml

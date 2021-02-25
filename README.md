@@ -1,4 +1,4 @@
-Description 
+Description
 ============
 
 Goal: Trigger Prometheus alerts based on slow response times (read from apache logs)
@@ -70,7 +70,7 @@ Manually append lines to apache log (grok_exporter will pick them up)
 
 You can manually create a slow 1222ms response and a fast 33ms response:
 ```
-$ docker exec -ti prometheus_spike_apache_1 bash
+$ docker exec -ti prometheus_apache_log_alerts_apache_1 bash
 
 echo "172.18.0.1 - - [$(date "+%d/%b/%Y:%H:%M:%S %z")] \"GET /slowresponse HTTP/1.0\" 200 196 1222" >> logs/access_log
 echo "172.18.0.1 - - [$(date "+%d/%b/%Y:%H:%M:%S %z")] \"GET /fastresponse HTTP/1.0\" 200 196 33" >> logs/access_log
@@ -83,7 +83,7 @@ date "+%d/%b/%Y:%H:%M:%S %z" #=> 11/Feb/2021:15:39:55 +0000
 
 ### Part 2: verify grok_exporter metrics endpoint
 
-Now you should be able to see some trafic to appear on http://localhost:9144/metrics
+Now you should be able to see some traffic to appear on http://localhost:9144/metrics
 
 For instance some histogram lines looking like this:
 
@@ -174,6 +174,37 @@ in `grok_exporter.conf`:
   </buffer>
 </match>
 ```
+
+### debug grok_exporter
+
+You can send request directly to grok_exporter webhook:
+
+```
+# unix:
+curl -X POST --data  '{"response":200,"method":"GET","duration":1222,"verb":"GET","timestamp":"19/Feb/2021:14:18:25 +0000","request":"/slowresponse","bytes":196,"type":"apache_access"}' -v  http://localhost:9144/webhook
+
+#windows (escape double quotes):
+curl -X POST --data "{""response"":200,""method"":""GET"",""duration"":1222,""verb"":""GET"",""timestamp"":""19/Feb/2021:14:18:25 +0000"",""request"":""/slowresponse"",""bytes"":196,""type"":""apache_access""}" -v  http://localhost:9144/webhook
+
+
+# or, save payload in file:
+curl -X POST --data @grok_exporter_testdata.json -v  http://localhost:9144/webhook
+
+```
+You should now be able to verify http://localhost:9144/metrics page has updated counts:
+
+```
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="0.5"} 0
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="1"} 0
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="2"} 1
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="3"} 1
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="5"} 1
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="10"} 1
+http_latency_seconds_bucket{method="GET",path="/slowresponse",status="200",le="+Inf"} 1
+http_latency_seconds_sum{method="GET",path="/slowresponse",status="200"} 1.222
+http_latency_seconds_count{method="GET",path="/slowresponse",status="200"} 1
+```
+
 
 ## inspirational links:
 
